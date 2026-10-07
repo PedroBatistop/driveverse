@@ -1,0 +1,159 @@
+name: Build DriveVerse IPA
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build IPA
+    runs-on: macos-26
+
+    env:
+      SPOTIFY_CLIENT_ID: ${{ secrets.SPOTIFY_CLIENT_ID }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Select Xcode 26
+        shell: bash
+        run: |
+          set -e
+
+          XCODE_PATH=$(ls -d /Applications/Xcode_26*.app 2>/dev/null | sort -V | tail -n 1)
+
+          if [ -z "$XCODE_PATH" ]; then
+            echo "Xcode 26 not found."
+            ls -la /Applications | grep Xcode || true
+            exit 1
+          fi
+
+          echo "Using: $XCODE_PATH"
+
+          sudo xcode-select -s "$XCODE_PATH/Contents/Developer"
+
+          xcodebuild -version
+          xcrun --sdk iphoneos --show-sdk-version
+
+      - name: Verify Spotify Client ID
+        shell: bash
+        run: |
+          if [ -z "$SPOTIFY_CLIENT_ID" ]; then
+            echo "SPOTIFY_CLIENT_ID GitHub Secret is missing."
+            exit 1
+          fi
+
+          echo "Spotify Client ID secret is configured."
+
+      - name: Create Secrets.plist
+        shell: bash
+        run: |
+          set -e
+
+          cp \
+            DriveVerse/Resources/Secrets.example.plist \
+            DriveVerse/Resources/Secrets.plist
+
+          /usr/libexec/PlistBuddy \
+            -c "Set :SpotifyClientID $SPOTIFY_CLIENT_ID" \
+            DriveVerse/Resources/Secrets.plist
+
+          echo "Secrets.plist created."
+
+      - name: Change Bundle Identifiers
+        shell: bash
+        run: |
+          set -e
+
+          sed -i '' \
+            's/com\.praveetgupta\.driveverse\.widgets/com.pedrobatistop.driveverse.widgets/g' \
+            DriveVerse.xcodeproj/project.pbxproj
+
+          sed -i '' \
+            's/com\.praveetgupta\.driveverse/com.pedrobatistop.driveverse/g' \
+            DriveVerse.xcodeproj/project.pbxproj
+
+          sed -i '' \
+            's/com\.praveetgupta/com.pedrobatistop/g' \
+            project.yml
+
+          echo "Bundle IDs:"
+          grep -n "PRODUCT_BUNDLE_IDENTIFIER" \
+            DriveVerse.xcodeproj/project.pbxproj || true
+
+      - name: Clean previous build
+        run: |
+          rm -rf build
+          rm -rf Payload
+
+      - name: Build DriveVerse
+        shell: bash
+        run: |
+          set -o pipefail
+
+          xcodebuild \
+            -project DriveVerse.xcodeproj \
+            -scheme DriveVerse \
+            -configuration Release \
+            -sdk iphoneos \
+            -destination 'generic/platform=iOS' \
+            -derivedDataPath "$PWD/build" \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            clean build \
+            | tee xcodebuild.log
+
+      - name: Verify app bundle
+        shell: bash
+        run: |
+          APP="build/Build/Products/Release-iphoneos/DriveVerse.app"
+
+          if [ ! -d "$APP" ]; then
+            echo "DriveVerse.app was not generated."
+            find build -maxdepth 5 -type d -name "*.app" -print || true
+            exit 1
+          fi
+
+          echo "DriveVerse.app generated successfully."
+
+          echo ""
+          echo "Embedded extensions:"
+          find "$APP" -name "*.appex" -print || true
+
+      - name: Create IPA
+        shell: bash
+        run: |
+          set -e
+
+          mkdir -p Payload
+
+          cp -R \
+            build/Build/Products/Release-iphoneos/DriveVerse.app \
+            Payload/
+
+          zip -qry DriveVerse.ipa Payload
+
+          echo ""
+          echo "Generated IPA:"
+          ls -lh DriveVerse.ipa
+
+      - name: Upload DriveVerse IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: DriveVerse-IPA
+          path: DriveVerse.ipa
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Upload build log on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: DriveVerse-Build-Log
+          path: xcodebuild.log
+          if-no-files-found: ignore
+          retention-days: 7
