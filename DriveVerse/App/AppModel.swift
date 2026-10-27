@@ -192,6 +192,14 @@ final class AppModel: ObservableObject {
         fetchLyrics(for: state)
     }
 
+    func refreshLyricsPreferences() {
+#if os(iOS)
+        var synced = false
+        if case .synced = lyricsState { synced = true }
+        liveActivity.refreshPreferences(state: nowPlaying, position: position, hasSyncedLyrics: synced)
+#endif
+    }
+
     func clearLyricsCache() {
         lyricsService.clearCache()
     }
