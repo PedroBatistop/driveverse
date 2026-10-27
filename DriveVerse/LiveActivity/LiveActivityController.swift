@@ -209,6 +209,11 @@ final class LiveActivityController {
         "\(state.title)|\(state.artist)|\(state.source.rawValue)"
     }
 
+    func refreshPreferences(state: NowPlayingState?, position: LyricsPosition?, hasSyncedLyrics: Bool) {
+        policy.reset()
+        sync(state: state, position: position, hasSyncedLyrics: hasSyncedLyrics)
+    }
+
     private static func content(state: NowPlayingState, position: LyricsPosition?) -> LyricsAttributes.ContentState {
         LyricsAttributes.ContentState(
             title: state.title,
@@ -216,6 +221,11 @@ final class LiveActivityController {
             sourceName: state.source.displayName,
             currentLine: position?.currentLine ?? "♪ \(state.title)",
             nextLine: position?.nextLine ?? "",
+            previousLines: position?.previousLines ?? [],
+            upcomingLines: position?.upcomingLines ?? [],
+            previousCount: min(10, max(0, UserDefaults.standard.integer(forKey: "lyricsPreviousCount"))),
+            upcomingCount: min(10, max(0, (UserDefaults.standard.object(forKey: "lyricsUpcomingCount") as? Int) ?? 1)),
+            lyricFontSize: min(42, max(10, (UserDefaults.standard.object(forKey: "lyricsFontSize") as? Double) ?? 22)),
             progress: position?.trackProgress ?? 0,
             isPlaying: state.isPlaying
         )
