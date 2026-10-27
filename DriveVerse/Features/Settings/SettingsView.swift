@@ -4,6 +4,9 @@ struct SettingsView: View {
     @EnvironmentObject private var model: AppModel
     @AppStorage(AppModel.pollIntervalKey) private var pollInterval: Double = 5
     @State private var cacheCleared = false
+    @AppStorage("lyricsPreviousCount") private var previousCount = 0
+    @AppStorage("lyricsUpcomingCount") private var upcomingCount = 1
+    @AppStorage("lyricsFontSize") private var lyricFontSize = 22.0
 
     var body: some View {
         Form {
@@ -40,6 +43,26 @@ struct SettingsView: View {
             } footer: {
                 Text("How often DriveVerse asks Spotify what's playing. Lower is snappier; higher saves battery and API quota. Between reports, lyric timing is extrapolated locally.")
             }
+
+            Section {
+                Stepper("Previous lines: \(previousCount)", value: $previousCount, in: 0...10)
+                Stepper("Upcoming lines: \(upcomingCount)", value: $upcomingCount, in: 0...10)
+                VStack(alignment: .leading) {
+                    HStack {
+                        Text("Lyric font size")
+                        Spacer()
+                        Text("\(Int(lyricFontSize)) pt").foregroundStyle(.secondary)
+                    }
+                    Slider(value: $lyricFontSize, in: 10...42, step: 1)
+                }
+            } header: {
+                Text("CarPlay lyrics")
+            } footer: {
+                Text("Set either line count to zero to hide those lines. Long lyrics wrap onto additional lines when space permits. CarPlay controls the tile's physical size, so extra content may not fit.")
+            }
+            .onChange(of: previousCount) { _, _ in model.refreshLyricsPreferences() }
+            .onChange(of: upcomingCount) { _, _ in model.refreshLyricsPreferences() }
+            .onChange(of: lyricFontSize) { _, _ in model.refreshLyricsPreferences() }
 
             Section {
                 Button("Clear lyrics cache") {
