@@ -6,6 +6,8 @@ struct LyricsPosition: Equatable {
     let lineIndex: Int?
     let currentLine: String?
     let nextLine: String?
+    var previousLines: [String] = []
+    var upcomingLines: [String] = []
     /// 0–1 through the current line's time window.
     let lineProgress: Double
     /// 0–1 through the whole track.
@@ -133,7 +135,9 @@ final class SyncEngine {
             positionMs: pos, lineIndex: index,
             currentLine: currentLine, nextLine: nextLine,
             lineProgress: lineProgress, trackProgress: trackProgress,
-            isPlaying: isPlaying
+            isPlaying: isPlaying,
+            previousLines: index.map { Array(lines[max(0, $0 - 10)..<$0].map(\.text)) } ?? [],
+            upcomingLines: Array(lines[(index.map { $0 + 1 } ?? 0)..<min(lines.count, (index.map { $0 + 1 } ?? 0) + 11)].map(\.text))
         )
     }
 }
