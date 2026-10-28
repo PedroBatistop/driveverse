@@ -94,6 +94,8 @@ struct LockScreenLyricsView: View {
         let upcoming = Array(state.upcomingLines.prefix(max(0, state.upcomingCount)))
         return ViewThatFits(in: .vertical) {
             lyricsStack(previous: previous, upcoming: upcoming, fontSize: state.lyricFontSize)
+            // Keep requested previous lines before dropping them for upcoming ones.
+            lyricsStack(previous: previous, upcoming: [], fontSize: state.lyricFontSize)
             lyricsStack(previous: [], upcoming: upcoming, fontSize: state.lyricFontSize)
             lyricsStack(previous: [], upcoming: [], fontSize: state.lyricFontSize)
         }
