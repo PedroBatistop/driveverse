@@ -83,23 +83,42 @@ struct LockScreenLyricsView: View {
     /// an observer app can't seek, so it would never be interactive and
     /// only steals space from the lyric.
     private var smallBody: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(context.state.currentLine)
-                .font(.title3.bold())
-                .lineLimit(2)
-                .minimumScaleFactor(0.7)
-                .contentTransition(.opacity)
-                .frame(maxWidth: .infinity, alignment: .leading)
+        configurableLyrics
+            .padding(8)
+            .animation(.smooth(duration: 0.3), value: context.state.currentLine)
+    }
 
-            Text(context.state.nextLine)
-                .font(.caption2)
-                .foregroundStyle(.secondary)
-                .lineLimit(1)
-                .id(context.state.nextLine)
-                .transition(.push(from: .bottom))
+    private var configurableLyrics: some View {
+        let state = context.state
+        let previous = Array(state.previousLines.suffix(max(0, state.previousCount)))
+        let upcoming = Array(state.upcomingLines.prefix(max(0, state.upcomingCount)))
+        return ViewThatFits(in: .vertical) {
+            lyricsStack(previous: previous, upcoming: upcoming, fontSize: state.lyricFontSize)
+            lyricsStack(previous: [], upcoming: upcoming, fontSize: state.lyricFontSize)
+            lyricsStack(previous: [], upcoming: [], fontSize: state.lyricFontSize)
         }
-        .padding(10)
-        .animation(.smooth(duration: 0.5), value: context.state)
+    }
+
+    private func lyricsStack(previous: [String], upcoming: [String], fontSize: Double) -> some View {
+        VStack(alignment: .leading, spacing: 3) {
+            ForEach(Array(previous.enumerated()), id: \.offset) { _, line in
+                Text(line)
+                    .font(.system(size: max(9, fontSize * 0.65)))
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            Text(context.state.currentLine)
+                .font(.system(size: fontSize, weight: .bold))
+                .foregroundStyle(.primary)
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            ForEach(Array(upcoming.enumerated()), id: \.offset) { _, line in
+                Text(line)
+                    .font(.system(size: max(9, fontSize * 0.7)))
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
     }
 
     private var mediumBody: some View {

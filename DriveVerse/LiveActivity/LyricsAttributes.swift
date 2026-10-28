@@ -16,6 +16,11 @@ struct LyricsAttributes: ActivityAttributes {
         var sourceName: String
         var currentLine: String
         var nextLine: String
+        var previousLines: [String] = []
+        var upcomingLines: [String] = []
+        var previousCount: Int = 0
+        var upcomingCount: Int = 1
+        var lyricFontSize: Double = 22
         /// 0–1 progress through the whole track.
         var progress: Double
         var isPlaying: Bool
